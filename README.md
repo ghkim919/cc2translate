@@ -7,8 +7,26 @@ Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰�
 ## 요구사항
 
 - Python 3.8+
-- Claude CLI ([설치 방법](https://claude.ai/code))
 - Linux (X11)
+- **Claude Code (필수)** - 아래 참고
+
+### Claude Code 설치 (필수)
+
+이 프로그램은 Claude Code CLI를 사용합니다. **반드시 먼저 설치하세요.**
+
+```bash
+# Claude Code 설치
+npm install -g @anthropic-ai/claude-code
+```
+
+또는 https://claude.ai/code 에서 설치 방법을 확인하세요.
+
+설치 후 `claude` 명령어가 작동하는지 확인:
+```bash
+claude --version
+```
+
+> **참고**: Claude Code를 사용하려면 [Claude Max/Pro 구독](https://claude.ai) 또는 API 키가 필요합니다.
 
 ## 설치
 
