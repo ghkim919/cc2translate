@@ -39,5 +39,18 @@ GEMINI_MODELS = {
     "Gemini Pro (균형)": "gemini-1.5-pro",
 }
 
+# Gemini API 모델 (직접 호출 - 여기에 모델 추가만 하면 자동 동작)
+GEMINI_API_MODELS = {
+    "Gemini 2.5 Flash Lite API": "gemini-2.5-flash-lite",
+    "Gemini 2.0 Flash API": "gemini-2.0-flash",
+    "Gemini 2.5 Flash API": "gemini-2.5-flash",
+    "Gemini 2.5 Pro API": "gemini-2.5-pro",
+}
+
+# DeepL API 모델 (직접 호출)
+DEEPL_API_MODELS = {
+    "DeepL API (빠름)": "deepl-free",
+}
+
 # 전체 모델 (UI 표시용)
-ALL_MODELS = {**CLAUDE_MODELS, **GEMINI_MODELS}
+ALL_MODELS = {**CLAUDE_MODELS, **GEMINI_MODELS, **GEMINI_API_MODELS, **DEEPL_API_MODELS}

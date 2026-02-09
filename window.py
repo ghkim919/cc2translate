@@ -1,18 +1,45 @@
 """메인 윈도우 UI - TranslatorWindow 클래스"""
 
+import os
 import threading
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QTextEdit, QComboBox, QLabel, QPushButton, QSplitter,
-    QSystemTrayIcon, QMenu, QAction,
+    QSystemTrayIcon, QMenu, QAction, QDialog, QDialogButtonBox,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QFont
 
-from constants import LANGUAGES, ALL_MODELS, IS_MACOS
+from constants import LANGUAGES, ALL_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS, IS_MACOS
 from translator import translate, TranslationError
 from hotkey import HotkeyListener
+
+
+class EnvGuideDialog(QDialog):
+    """API 키 환경변수 설정 안내 다이얼로그"""
+    def __init__(self, key_name, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("API 키 설정 안내")
+        self.setMinimumWidth(500)
+
+        layout = QVBoxLayout(self)
+
+        guide = QLabel(
+            f"<b>{key_name}</b> 환경변수가 설정되지 않았습니다.<br><br>"
+            f"셸 설정 파일(~/.zshrc 또는 ~/.bashrc)에 다음을 추가하세요:<br><br>"
+            f"<code>export {key_name}=\"your-api-key\"</code><br><br>"
+            f"추가 후 터미널을 재시작하거나 <code>source ~/.zshrc</code>를 실행하세요."
+        )
+        guide.setTextFormat(Qt.RichText)
+        guide.setWordWrap(True)
+        guide.setStyleSheet("padding: 10px;")
+        guide.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(guide)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok)
+        buttons.accepted.connect(self.accept)
+        layout.addWidget(buttons)
 
 
 class SignalEmitter(QObject):
@@ -134,6 +161,17 @@ class TranslatorWindow(QMainWindow):
         """)
         toolbar.addWidget(self.translate_btn)
 
+        self.settings_btn = QPushButton("설정")
+        self.settings_btn.clicked.connect(self._show_settings)
+        self.settings_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e0e0e0; color: #333;
+                border: none; border-radius: 3px; padding: 5px 15px;
+            }
+            QPushButton:hover { background-color: #d0d0d0; }
+        """)
+        toolbar.addWidget(self.settings_btn)
+
     def _init_text_area(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -244,6 +282,9 @@ class TranslatorWindow(QMainWindow):
         tgt_lang = LANGUAGES[self.tgt_lang_combo.currentText()]
         model = ALL_MODELS[self.model_combo.currentText()]
 
+        if not self._check_api_key(model):
+            return
+
         self.translate_btn.setEnabled(False)
         self.statusBar().showMessage(f"번역 중... ({self.model_combo.currentText()})")
         self.tgt_text.clear()
@@ -273,6 +314,36 @@ class TranslatorWindow(QMainWindow):
         self.tgt_text.setText(f"오류: {error}")
         self.translate_btn.setEnabled(True)
         self.statusBar().showMessage("번역 실패")
+
+    # ── 설정 ──────────────────────────────────────────────
+
+    def _show_settings(self):
+        gemini_status = "설정됨" if os.environ.get("GEMINI_API_KEY") else "미설정"
+        deepl_status = "설정됨" if os.environ.get("DEEPL_API_KEY") else "미설정"
+        dialog = EnvGuideDialog("GEMINI_API_KEY / DEEPL_API_KEY", self)
+        dialog.setWindowTitle("API 키 상태")
+        dialog.findChild(QLabel).setText(
+            f"<b>API 키 상태</b><br><br>"
+            f"GEMINI_API_KEY: {gemini_status}<br>"
+            f"DEEPL_API_KEY: {deepl_status}<br><br>"
+            f"셸 설정 파일(~/.zshrc 또는 ~/.bashrc)에서 환경변수를 설정하세요:<br><br>"
+            f"<code>export GEMINI_API_KEY=\"your-key\"</code><br>"
+            f"<code>export DEEPL_API_KEY=\"your-key\"</code><br><br>"
+            f"설정 후 앱을 재시작하세요."
+        )
+        dialog.exec_()
+
+    def _check_api_key(self, model):
+        """API 모델 선택 시 환경변수에 키가 없으면 안내 다이얼로그를 표시."""
+        if model in GEMINI_API_MODELS.values() and not os.environ.get("GEMINI_API_KEY"):
+            self.statusBar().showMessage("GEMINI_API_KEY 환경변수가 필요합니다")
+            EnvGuideDialog("GEMINI_API_KEY", self).exec_()
+            return False
+        if model in DEEPL_API_MODELS.values() and not os.environ.get("DEEPL_API_KEY"):
+            self.statusBar().showMessage("DEEPL_API_KEY 환경변수가 필요합니다")
+            EnvGuideDialog("DEEPL_API_KEY", self).exec_()
+            return False
+        return True
 
     # ── 기타 액션 ──────────────────────────────────────────
 

@@ -1,11 +1,34 @@
-"""번역 백엔드 - Claude/Gemini CLI를 이용한 번역 처리"""
+"""번역 백엔드 - Claude/Gemini CLI 및 API를 이용한 번역 처리"""
 
 import json
 import os
 import re
 import subprocess
 
-from constants import GEMINI_MODELS
+import requests
+
+from constants import GEMINI_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS
+
+# DeepL 언어 코드 매핑
+DEEPL_LANG_MAP = {
+    "Korean": "KO",
+    "English": "EN",
+    "Japanese": "JA",
+    "Simplified Chinese": "ZH-HANS",
+    "Traditional Chinese": "ZH-HANT",
+    "Spanish": "ES",
+    "French": "FR",
+    "German": "DE",
+    "Russian": "RU",
+    "Portuguese": "PT",
+    "Italian": "IT",
+    "Indonesian": "ID",
+    "Arabic": "AR",
+}
+
+def _get_api_key(key_name):
+    """환경변수에서 API 키 조회"""
+    return os.environ.get(key_name, "")
 
 
 def _get_env():
@@ -33,7 +56,91 @@ def build_prompt(text, src_lang, tgt_lang):
 
 
 def translate(text, src_lang, tgt_lang, model):
-    """CLI를 이용한 번역 실행. 성공 시 번역 텍스트 반환, 실패 시 TranslationError 발생."""
+    """번역 실행. API 모델이면 API 호출, 아니면 CLI 호출."""
+    if model in GEMINI_API_MODELS.values():
+        return _translate_gemini_api(text, src_lang, tgt_lang, model)
+    if model in DEEPL_API_MODELS.values():
+        return _translate_deepl_api(text, src_lang, tgt_lang)
+    return _translate_cli(text, src_lang, tgt_lang, model)
+
+
+def _translate_gemini_api(text, src_lang, tgt_lang, model):
+    """Gemini API 직접 호출 - model 파라미터로 어떤 모델이든 동적 호출"""
+    api_key = _get_api_key("GEMINI_API_KEY")
+    if not api_key:
+        raise TranslationError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+
+    prompt = build_prompt(text, src_lang, tgt_lang)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+    }
+
+    try:
+        resp = requests.post(url, json=payload, timeout=30)
+    except requests.Timeout:
+        raise TranslationError("Gemini API 시간 초과 (30초)")
+    except requests.ConnectionError:
+        raise TranslationError("Gemini API 연결 실패. 네트워크를 확인하세요.")
+
+    if resp.status_code != 200:
+        error_msg = resp.json().get("error", {}).get("message", resp.text)
+        raise TranslationError(f"Gemini API 오류: {error_msg}")
+
+    try:
+        data = resp.json()
+        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+        return parse_translation(raw)
+    except (KeyError, IndexError):
+        raise TranslationError("Gemini API 응답을 파싱할 수 없습니다")
+
+
+def _translate_deepl_api(text, src_lang, tgt_lang):
+    """DeepL API 직접 호출"""
+    api_key = _get_api_key("DEEPL_API_KEY")
+    if not api_key:
+        raise TranslationError("DEEPL_API_KEY 환경변수가 설정되지 않았습니다.")
+
+    tgt_code = DEEPL_LANG_MAP.get(tgt_lang)
+    if not tgt_code:
+        raise TranslationError(f"DeepL에서 '{tgt_lang}' 언어를 지원하지 않습니다")
+
+    url = "https://api-free.deepl.com/v2/translate"
+    params = {
+        "text": text,
+        "target_lang": tgt_code,
+    }
+    if src_lang != "auto":
+        src_code = DEEPL_LANG_MAP.get(src_lang)
+        if src_code:
+            # DeepL source_lang은 상위 코드만 사용 (EN, ZH 등)
+            params["source_lang"] = src_code.split("-")[0]
+
+    headers = {"Authorization": f"DeepL-Auth-Key {api_key}"}
+
+    try:
+        resp = requests.post(url, data=params, headers=headers, timeout=30)
+    except requests.Timeout:
+        raise TranslationError("DeepL API 시간 초과 (30초)")
+    except requests.ConnectionError:
+        raise TranslationError("DeepL API 연결 실패. 네트워크를 확인하세요.")
+
+    if resp.status_code == 403:
+        raise TranslationError("DeepL API 키가 유효하지 않습니다")
+    if resp.status_code == 456:
+        raise TranslationError("DeepL API 무료 할당량이 초과되었습니다")
+    if resp.status_code != 200:
+        raise TranslationError(f"DeepL API 오류 ({resp.status_code}): {resp.text}")
+
+    try:
+        data = resp.json()
+        return data["translations"][0]["text"]
+    except (KeyError, IndexError):
+        raise TranslationError("DeepL API 응답을 파싱할 수 없습니다")
+
+
+def _translate_cli(text, src_lang, tgt_lang, model):
+    """CLI를 이용한 번역 실행"""
     prompt = build_prompt(text, src_lang, tgt_lang)
     is_gemini = model in GEMINI_MODELS.values()
 

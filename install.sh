@@ -62,7 +62,7 @@ echo -e "      ${GREEN}Claude CLI $CLAUDE_VERSION 확인됨${NC}"
 
 # 빌드 의존성 설치
 echo -e "${YELLOW}[3/6]${NC} 빌드 의존성 설치 중..."
-DEPS="PyQt5 pynput pyinstaller"
+DEPS="PyQt5 pynput pyinstaller requests"
 if [ "$OS" = "macos" ]; then
     DEPS="$DEPS pyobjc-framework-ApplicationServices"
 fi
