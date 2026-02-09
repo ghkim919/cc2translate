@@ -6,6 +6,8 @@
 
 Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다.
 
+![example](example.gif)
+
 ## 지원 모델
 
 | Provider | 모델 | 특징 |
