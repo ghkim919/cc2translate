@@ -24,7 +24,6 @@ Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰�
 - Linux (X11) 또는 macOS
 - **Claude Code** 또는 **Gemini CLI** (사용할 모델에 따라)
 
-> **macOS는 아직 테스트가 완료되지 않아 정상적으로 실행되지 않을 수 있습니다.**
 
 - [Claude Code 설치](https://claude.ai/code)
 - [Gemini CLI 설치](https://github.com/google-gemini/gemini-cli) (선택)
@@ -59,17 +58,12 @@ cc2translate
 - **모델 선택**: Claude (Haiku/Sonnet/Opus), Gemini (Flash/Pro)
 - **시스템 트레이**: 창을 닫아도 백그라운드에서 실행
 
+> **참고**: CLI 기반으로 동작하기 때문에 매 번역마다 프로세스 생성 및 초기화 오버헤드가 발생하여 API 직접 호출 대비 응답이 느릴 수 있습니다.
+
 ## 제거
 
-**Linux**:
 ```bash
 ./uninstall.sh
-```
-
-**macOS**:
-```bash
-rm ~/.local/bin/cc2translate
-rm -rf ~/Applications/CC2Translate.app
 ```
 
 ## 라이센스
