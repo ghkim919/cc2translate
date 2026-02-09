@@ -4,7 +4,8 @@
 - **Linux**: Ctrl+C 두 번
 - **macOS**: Cmd+C 두 번
 
-Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다. 돈 있으면 DeepL 쓰세요... DeepL이 훨씬 좋습니다.
+Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다. <br>
+돈 있으면 DeepL 쓰세요... DeepL이 훨씬 좋습니다.
 
 ![example](example.gif)
 
@@ -45,7 +46,7 @@ cd cc2translate
 cc2translate
 ```
 
-**Linux**: 앱 메뉴에서 "CC2Translate" 검색
+**Linux**: 앱 메뉴에서 "CC2Translate" 검색 <br>
 **macOS**: Spotlight에서 "CC2Translate" 검색 또는 `~/Applications/CC2Translate.app` 실행
 
 ### 번역하기
