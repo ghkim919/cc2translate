@@ -33,6 +33,16 @@ Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰�
 
 API 모델은 프로세스 생성 오버헤드 없이 직접 호출하므로 CLI 대비 응답이 빠릅니다.
 
+Gemini API 모델을 추가/변경하려면 `constants.py`의 `GEMINI_API_MODELS`를 수정하세요:
+
+```python
+GEMINI_API_MODELS = {
+    "표시 이름": "gemini-모델-id",  # Google AI에서 제공하는 모델 ID
+}
+```
+
+모델 ID는 [Gemini 모델 목록](https://ai.google.dev/gemini-api/docs/models)에서 확인할 수 있습니다.
+
 ## 요구사항
 
 - Python 3.8+
