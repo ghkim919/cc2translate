@@ -66,16 +66,16 @@ class TranslatorWindow(QMainWindow):
         self.signal_emitter.translation_done.connect(self.on_translation_done)
         self.signal_emitter.translation_error.connect(self.on_translation_error)
 
-        self.init_ui()
-        self.setup_hotkey_listener()
-        self.setup_tray_icon()
-
         # 복사 단축키 더블 클릭 감지용
         self.last_copy_time = 0
         self.modifier_pressed = False
 
-        # OS별 단축키 텍스트
+        # OS별 단축키 텍스트 (init_ui 전에 정의해야 함)
         self.shortcut_text = "Cmd+C" if IS_MACOS else "Ctrl+C"
+
+        self.init_ui()
+        self.setup_hotkey_listener()
+        self.setup_tray_icon()
 
     def init_ui(self):
         """UI 초기화"""
