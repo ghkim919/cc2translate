@@ -2,9 +2,10 @@
 
 import time
 
-from pynput import keyboard
-
 from constants import IS_MACOS
+
+if IS_MACOS:
+    import Quartz
 
 
 class HotkeyListener:
@@ -13,56 +14,106 @@ class HotkeyListener:
     def __init__(self, on_double_copy):
         self.on_double_copy = on_double_copy
         self.last_copy_time = 0
-        self.modifier_pressed = False
-        self.listener = keyboard.Listener(
-            on_press=self._on_press,
-            on_release=self._on_release
-        )
-        self.listener.daemon = True
 
     def start(self):
-        self.listener.start()
+        if IS_MACOS:
+            self._start_macos()
+        else:
+            self._start_linux()
 
     def stop(self):
-        self.listener.stop()
-
-    def _is_c_key(self, key):
-        if not hasattr(key, 'char') or key.char is None:
-            return False
-        # macOS에서 Cmd+C를 누르면 char가 '\x03' (ETX)으로 전달됨
         if IS_MACOS:
-            return key.char in ('c', '\x03')
-        return key.char == 'c'
+            self._stop_macos()
+        else:
+            self._stop_linux()
 
-    def _on_press(self, key):
+    # ── macOS: Quartz CGEventTap (메인 RunLoop에서 실행) ──
+
+    def _start_macos(self):
+        self._cmd_pressed = False
+        mask = (
+            Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown) |
+            Quartz.CGEventMaskBit(Quartz.kCGEventFlagsChanged)
+        )
+        self._tap = Quartz.CGEventTapCreate(
+            Quartz.kCGSessionEventTap,
+            Quartz.kCGHeadInsertEventTap,
+            Quartz.kCGEventTapOptionListenOnly,
+            mask,
+            self._cg_event_callback,
+            None
+        )
+        if self._tap is None:
+            return
+
+        source = Quartz.CFMachPortCreateRunLoopSource(None, self._tap, 0)
+        Quartz.CFRunLoopAddSource(
+            Quartz.CFRunLoopGetMain(),
+            source,
+            Quartz.kCFRunLoopCommonModes
+        )
+        Quartz.CGEventTapEnable(self._tap, True)
+
+    def _cg_event_callback(self, proxy, event_type, event, refcon):
         try:
-            if IS_MACOS:
-                if key in (keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r):
-                    self.modifier_pressed = True
-                    return
-            else:
-                if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-                    self.modifier_pressed = True
-                    return
+            if event_type == Quartz.kCGEventFlagsChanged:
+                flags = Quartz.CGEventGetFlags(event)
+                self._cmd_pressed = bool(flags & Quartz.kCGEventFlagMaskCommand)
+            elif event_type == Quartz.kCGEventKeyDown and self._cmd_pressed:
+                keycode = Quartz.CGEventGetIntegerValueField(
+                    event, Quartz.kCGKeyboardEventKeycode
+                )
+                if keycode == 8:  # 'c' key
+                    now = time.time()
+                    if now - self.last_copy_time < 0.5:
+                        self.last_copy_time = 0
+                        self.on_double_copy()
+                    else:
+                        self.last_copy_time = now
+        except Exception:
+            pass
+        return event
 
-            # press 시점에서 감지 (release에서 하면 modifier 해제 순서 문제 발생)
-            if self._is_c_key(key) and self.modifier_pressed:
-                current_time = time.time()
-                if current_time - self.last_copy_time < 0.5:
+    def _stop_macos(self):
+        if hasattr(self, '_tap') and self._tap:
+            Quartz.CGEventTapEnable(self._tap, False)
+
+    # ── Linux: pynput ──
+
+    def _start_linux(self):
+        from pynput import keyboard
+        self._ctrl_pressed = False
+        self._listener = keyboard.Listener(
+            on_press=self._on_press_linux,
+            on_release=self._on_release_linux
+        )
+        self._listener.daemon = True
+        self._listener.start()
+
+    def _on_press_linux(self, key):
+        from pynput import keyboard
+        try:
+            if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self._ctrl_pressed = True
+                return
+            if hasattr(key, 'char') and key.char == 'c' and self._ctrl_pressed:
+                now = time.time()
+                if now - self.last_copy_time < 0.5:
                     self.last_copy_time = 0
                     self.on_double_copy()
                 else:
-                    self.last_copy_time = current_time
+                    self.last_copy_time = now
         except Exception:
             pass
 
-    def _on_release(self, key):
+    def _on_release_linux(self, key):
+        from pynput import keyboard
         try:
-            if IS_MACOS:
-                if key in (keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r):
-                    self.modifier_pressed = False
-            else:
-                if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-                    self.modifier_pressed = False
+            if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self._ctrl_pressed = False
         except Exception:
             pass
+
+    def _stop_linux(self):
+        if hasattr(self, '_listener'):
+            self._listener.stop()
