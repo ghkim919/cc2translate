@@ -6,29 +6,39 @@
 
 Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다.
 
+## 지원 모델
+
+| Provider | 모델 | 특징 |
+|----------|------|------|
+| **Claude** | Haiku | 빠름 |
+| **Claude** | Sonnet | 균형 |
+| **Claude** | Opus | 고품질 |
+| **Gemini** | Flash | 빠름 |
+| **Gemini** | Pro | 균형 |
+
 ## 요구사항
 
 - Python 3.8+
 - Linux (X11) 또는 macOS
-- **Claude Code (필수)** - 아래 참고
+- **Claude Code** 또는 **Gemini CLI** (사용할 모델에 따라)
 
-### Claude Code 설치 (필수)
-
-이 프로그램은 Claude Code CLI를 사용합니다. **반드시 먼저 설치하세요.**
+### Claude Code 설치
 
 ```bash
-# Claude Code 설치
 npm install -g @anthropic-ai/claude-code
 ```
 
 또는 https://claude.ai/code 에서 설치 방법을 확인하세요.
 
-설치 후 `claude` 명령어가 작동하는지 확인:
+> Claude Code를 사용하려면 [Claude Max/Pro 구독](https://claude.ai) 또는 API 키가 필요합니다.
+
+### Gemini CLI 설치 (선택)
+
 ```bash
-claude --version
+npm install -g @google/gemini-cli
 ```
 
-> **참고**: Claude Code를 사용하려면 [Claude Max/Pro 구독](https://claude.ai) 또는 API 키가 필요합니다.
+또는 https://github.com/google-gemini/gemini-cli 에서 설치 방법을 확인하세요.
 
 ## 설치
 
@@ -57,7 +67,7 @@ cc2translate
 
 ### 기능
 - **자동 언어 감지**: 한국어, 영어, 일본어, 중국어 등 자동 인식
-- **모델 선택**: Haiku(빠름), Sonnet(균형), Opus(고품질)
+- **모델 선택**: Claude (Haiku/Sonnet/Opus), Gemini (Flash/Pro)
 - **시스템 트레이**: 창을 닫아도 백그라운드에서 실행
 
 ## 제거
@@ -71,17 +81,6 @@ cc2translate
 ```bash
 rm ~/.local/bin/cc2translate
 rm -rf ~/Applications/CC2Translate.app
-```
-
-## 파일 구조
-
-```
-cc2translate/
-├── cc2translate.py    # 메인 프로그램
-├── install.sh         # 설치 스크립트 (Linux/macOS)
-├── uninstall.sh       # 제거 스크립트 (Linux)
-├── requirements.txt   # Python 의존성
-└── README.md          # 이 파일
 ```
 
 ## 라이센스

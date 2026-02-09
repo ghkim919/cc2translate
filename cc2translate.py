@@ -44,11 +44,21 @@ LANGUAGES = {
 }
 
 # Claude 모델 목록
-MODELS = {
-    "Haiku (빠름)": "haiku",
-    "Sonnet (균형)": "sonnet",
-    "Opus (고품질)": "opus",
+# Claude 모델
+CLAUDE_MODELS = {
+    "Claude Haiku (빠름)": "haiku",
+    "Claude Sonnet (균형)": "sonnet",
+    "Claude Opus (고품질)": "opus",
 }
+
+# Gemini 모델
+GEMINI_MODELS = {
+    "Gemini Flash (빠름)": "gemini-2.0-flash",
+    "Gemini Pro (균형)": "gemini-1.5-pro",
+}
+
+# 전체 모델 (UI 표시용)
+ALL_MODELS = {**CLAUDE_MODELS, **GEMINI_MODELS}
 
 
 class SignalEmitter(QObject):
@@ -99,8 +109,8 @@ class TranslatorWindow(QMainWindow):
         model_label = QLabel(" 모델:")
         toolbar.addWidget(model_label)
         self.model_combo = QComboBox()
-        self.model_combo.addItems(MODELS.keys())
-        self.model_combo.setCurrentText("Haiku (빠름)")
+        self.model_combo.addItems(ALL_MODELS.keys())
+        self.model_combo.setCurrentText("Claude Haiku (빠름)")
         self.model_combo.setMinimumWidth(120)
         toolbar.addWidget(self.model_combo)
 
@@ -342,7 +352,7 @@ class TranslatorWindow(QMainWindow):
 
         src_lang = LANGUAGES[self.src_lang_combo.currentText()]
         tgt_lang = LANGUAGES[self.tgt_lang_combo.currentText()]
-        model = MODELS[self.model_combo.currentText()]
+        model = ALL_MODELS[self.model_combo.currentText()]
 
         self.translate_btn.setEnabled(False)
         self.statusBar().showMessage(f"번역 중... ({self.model_combo.currentText()})")
@@ -357,19 +367,32 @@ class TranslatorWindow(QMainWindow):
         thread.start()
 
     def run_translation(self, text, src_lang, tgt_lang, model):
-        """Claude를 이용한 번역 (백그라운드 스레드)"""
+        """Claude/Gemini를 이용한 번역 (백그라운드 스레드)"""
         try:
             if src_lang == "auto":
                 prompt = f'Translate the following text to {tgt_lang}. Only output the translation, nothing else:\n\n{text}'
             else:
                 prompt = f'Translate the following {src_lang} text to {tgt_lang}. Only output the translation, nothing else:\n\n{text}'
 
-            result = subprocess.run(
-                ['claude', '-p', prompt, '--model', model],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
+            # Gemini 모델인지 확인
+            is_gemini = model in GEMINI_MODELS.values()
+
+            if is_gemini:
+                # Gemini CLI 사용
+                result = subprocess.run(
+                    ['gemini', '-p', prompt],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+            else:
+                # Claude CLI 사용
+                result = subprocess.run(
+                    ['claude', '-p', prompt, '--model', model],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
 
             if result.returncode == 0:
                 translation = result.stdout.strip()
@@ -380,6 +403,11 @@ class TranslatorWindow(QMainWindow):
 
         except subprocess.TimeoutExpired:
             self.signal_emitter.translation_error.emit("번역 시간 초과 (60초)")
+        except FileNotFoundError as e:
+            if is_gemini:
+                self.signal_emitter.translation_error.emit("Gemini CLI가 설치되어 있지 않습니다")
+            else:
+                self.signal_emitter.translation_error.emit("Claude CLI가 설치되어 있지 않습니다")
         except Exception as e:
             self.signal_emitter.translation_error.emit(str(e))
 
