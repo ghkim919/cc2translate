@@ -22,6 +22,8 @@ Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰�
 - Linux (X11) 또는 macOS
 - **Claude Code** 또는 **Gemini CLI** (사용할 모델에 따라)
 
+> **macOS는 아직 테스트가 완료되지 않아 정상적으로 실행되지 않을 수 있습니다.**
+
 ### Claude Code 설치
 
 ```bash
