@@ -1,7 +1,8 @@
 # CC2Translate
 
 Ctrl+C 두 번으로 텍스트를 번역하는 GUI 프로그램입니다.
-Claude CLI를 사용하여 고품질 번역을 제공합니다.
+
+Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다.
 
 ## 요구사항
 
@@ -12,7 +13,7 @@ Claude CLI를 사용하여 고품질 번역을 제공합니다.
 ## 설치
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ghkim919/cc2translate.git
 cd cc2translate
 ./install.sh
 ```
