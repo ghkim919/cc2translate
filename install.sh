@@ -81,9 +81,9 @@ if [ "$OS" = "macos" ]; then
         --name CC2Translate \
         --clean \
         --noconfirm \
-        cc2translate.py 2>/dev/null || {
+        main.py 2>/dev/null || {
         echo -e "${YELLOW}상세 로그로 재시도...${NC}"
-        python3 -m PyInstaller --onefile --windowed --name CC2Translate cc2translate.py
+        python3 -m PyInstaller --onefile --windowed --name CC2Translate main.py
     }
 else
     # Linux
@@ -93,9 +93,9 @@ else
         --name cc2translate \
         --clean \
         --noconfirm \
-        cc2translate.py 2>/dev/null || {
+        main.py 2>/dev/null || {
         echo -e "${YELLOW}상세 로그로 재시도...${NC}"
-        python3 -m PyInstaller --onefile --windowed --name cc2translate cc2translate.py
+        python3 -m PyInstaller --onefile --windowed --name cc2translate main.py
     }
 fi
 echo -e "      ${GREEN}바이너리 빌드 완료${NC}"
