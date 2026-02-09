@@ -27,14 +27,10 @@ echo ""
 # 현재 디렉토리
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ "$OS" = "macos" ]; then
-    INSTALL_DIR="$HOME/Library/Application Support/cc2translate"
-    BIN_DIR="/usr/local/bin"
-    APP_DIR="$HOME/Applications"
-else
-    INSTALL_DIR="$HOME/.local/share/cc2translate"
-    BIN_DIR="$HOME/.local/bin"
-fi
+# 공통 경로 (Linux/macOS 동일)
+INSTALL_DIR="$HOME/.local/share/cc2translate"
+BIN_DIR="$HOME/.local/bin"
+APP_DIR="$HOME/Applications"
 
 # Python 확인
 echo -e "${YELLOW}[1/6]${NC} Python 확인 중..."
@@ -107,22 +103,14 @@ echo -e "      ${GREEN}바이너리 빌드 완료${NC}"
 # 프로그램 설치
 echo -e "${YELLOW}[5/6]${NC} 프로그램 설치 중..."
 mkdir -p "$INSTALL_DIR"
+mkdir -p "$BIN_DIR"
 
 if [ "$OS" = "macos" ]; then
-    # macOS: /usr/local/bin에 설치 (sudo 필요할 수 있음)
-    if [ -w "$BIN_DIR" ]; then
-        cp "$SCRIPT_DIR/dist/CC2Translate" "$BIN_DIR/cc2translate"
-    else
-        echo -e "${YELLOW}      관리자 권한 필요...${NC}"
-        sudo cp "$SCRIPT_DIR/dist/CC2Translate" "$BIN_DIR/cc2translate"
-    fi
-    chmod +x "$BIN_DIR/cc2translate"
+    cp "$SCRIPT_DIR/dist/CC2Translate" "$BIN_DIR/cc2translate"
 else
-    # Linux
-    mkdir -p "$BIN_DIR"
     cp "$SCRIPT_DIR/dist/cc2translate" "$BIN_DIR/"
-    chmod +x "$BIN_DIR/cc2translate"
 fi
+chmod +x "$BIN_DIR/cc2translate"
 echo -e "      ${GREEN}프로그램 설치 완료${NC}"
 
 # 앱 등록
@@ -134,9 +122,9 @@ if [ "$OS" = "macos" ]; then
     # 간단한 실행 스크립트로 .app 생성
     APP_BUNDLE="$APP_DIR/CC2Translate.app"
     mkdir -p "$APP_BUNDLE/Contents/MacOS"
-    cat > "$APP_BUNDLE/Contents/MacOS/CC2Translate" << 'APPEOF'
+    cat > "$APP_BUNDLE/Contents/MacOS/CC2Translate" << APPEOF
 #!/bin/bash
-/usr/local/bin/cc2translate
+"\$HOME/.local/bin/cc2translate"
 APPEOF
     chmod +x "$APP_BUNDLE/Contents/MacOS/CC2Translate"
 
@@ -179,11 +167,15 @@ fi
 # 빌드 파일 정리
 rm -rf "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR"/*.spec 2>/dev/null
 
-# PATH 확인 (Linux만)
-if [ "$OS" = "linux" ] && [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+# PATH 확인
+if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     echo ""
     echo -e "${YELLOW}주의:${NC} $BIN_DIR 가 PATH에 없습니다."
-    echo "다음 줄을 ~/.bashrc 또는 ~/.zshrc에 추가하세요:"
+    if [ "$OS" = "macos" ]; then
+        echo "다음 줄을 ~/.zshrc에 추가하세요:"
+    else
+        echo "다음 줄을 ~/.bashrc 또는 ~/.zshrc에 추가하세요:"
+    fi
     echo ""
     echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo ""

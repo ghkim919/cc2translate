@@ -69,7 +69,7 @@ cc2translate
 
 **macOS**:
 ```bash
-sudo rm /usr/local/bin/cc2translate
+rm ~/.local/bin/cc2translate
 rm -rf ~/Applications/CC2Translate.app
 ```
 
