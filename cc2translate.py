@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CC2Translate - Ctrl+C 두 번으로 번역하는 GUI 프로그램
+CC2Translate - Ctrl+C (macOS: Cmd+C) 두 번으로 번역하는 GUI 프로그램
 클립보드 내용을 Claude를 이용해 번역합니다.
 """
 
@@ -8,6 +8,11 @@ import sys
 import subprocess
 import threading
 import time
+import platform
+
+# OS 감지
+IS_MACOS = platform.system() == "Darwin"
+IS_LINUX = platform.system() == "Linux"
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QComboBox, QLabel, QPushButton, QSplitter, QFrame,
@@ -65,9 +70,12 @@ class TranslatorWindow(QMainWindow):
         self.setup_hotkey_listener()
         self.setup_tray_icon()
 
-        # Ctrl+C 더블 클릭 감지용
-        self.last_ctrl_c_time = 0
-        self.ctrl_pressed = False
+        # 복사 단축키 더블 클릭 감지용
+        self.last_copy_time = 0
+        self.modifier_pressed = False
+
+        # OS별 단축키 텍스트
+        self.shortcut_text = "Cmd+C" if IS_MACOS else "Ctrl+C"
 
     def init_ui(self):
         """UI 초기화"""
@@ -186,7 +194,7 @@ class TranslatorWindow(QMainWindow):
 
         # 원본 텍스트
         self.src_text = QTextEdit()
-        self.src_text.setPlaceholderText("원본 텍스트 (Ctrl+C 두 번으로 클립보드에서 가져오기)")
+        self.src_text.setPlaceholderText(f"원본 텍스트 ({self.shortcut_text} 두 번으로 클립보드에서 가져오기)")
         self.src_text.setFont(QFont("Sans", 11))
         self.src_text.setStyleSheet("""
             QTextEdit {
@@ -216,7 +224,7 @@ class TranslatorWindow(QMainWindow):
         main_layout.addWidget(splitter)
 
         # 상태바
-        self.statusBar().showMessage("준비됨 - Ctrl+C 두 번으로 번역")
+        self.statusBar().showMessage(f"준비됨 - {self.shortcut_text} 두 번으로 번역")
         self.status_label = self.statusBar()  # 호환성을 위해
 
     def setup_tray_icon(self):
@@ -245,28 +253,38 @@ class TranslatorWindow(QMainWindow):
             self.show_and_activate()
 
     def setup_hotkey_listener(self):
-        """글로벌 핫키 리스너 설정"""
+        """글로벌 핫키 리스너 설정 (Linux: Ctrl+C, macOS: Cmd+C)"""
         def on_press(key):
             try:
-                if key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
-                    self.ctrl_pressed = True
+                # macOS: Command 키, Linux: Ctrl 키
+                if IS_MACOS:
+                    if key == keyboard.Key.cmd or key == keyboard.Key.cmd_l or key == keyboard.Key.cmd_r:
+                        self.modifier_pressed = True
+                else:
+                    if key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
+                        self.modifier_pressed = True
             except:
                 pass
 
         def on_release(key):
             try:
-                if key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
-                    self.ctrl_pressed = False
+                # macOS: Command 키, Linux: Ctrl 키
+                if IS_MACOS:
+                    if key == keyboard.Key.cmd or key == keyboard.Key.cmd_l or key == keyboard.Key.cmd_r:
+                        self.modifier_pressed = False
+                else:
+                    if key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
+                        self.modifier_pressed = False
 
-                # Ctrl+C 감지 (c 키가 눌렸을 때 ctrl이 눌려있는 상태)
-                if hasattr(key, 'char') and key.char == 'c' and self.ctrl_pressed:
+                # 복사 단축키 감지 (c 키가 눌렸을 때 modifier가 눌려있는 상태)
+                if hasattr(key, 'char') and key.char == 'c' and self.modifier_pressed:
                     current_time = time.time()
-                    if current_time - self.last_ctrl_c_time < 0.5:  # 0.5초 내에 두 번
-                        self.last_ctrl_c_time = 0
+                    if current_time - self.last_copy_time < 0.5:  # 0.5초 내에 두 번
+                        self.last_copy_time = 0
                         # 약간의 딜레이 후 창 표시 (클립보드에 복사될 시간)
                         threading.Timer(0.1, self.trigger_show_window).start()
                     else:
-                        self.last_ctrl_c_time = current_time
+                        self.last_copy_time = current_time
             except:
                 pass
 
@@ -399,7 +417,7 @@ class TranslatorWindow(QMainWindow):
         self.hide()
         self.tray_icon.showMessage(
             "CC2Translate",
-            "프로그램이 트레이에서 실행 중입니다. Ctrl+C 두 번으로 번역할 수 있습니다.",
+            f"프로그램이 트레이에서 실행 중입니다. {self.shortcut_text} 두 번으로 번역할 수 있습니다.",
             QSystemTrayIcon.Information,
             2000
         )

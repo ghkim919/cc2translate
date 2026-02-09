@@ -1,13 +1,15 @@
 # CC2Translate
 
-Ctrl+C 두 번으로 텍스트를 번역하는 GUI 프로그램입니다.
+복사 단축키 두 번으로 텍스트를 번역하는 GUI 프로그램입니다.
+- **Linux**: Ctrl+C 두 번
+- **macOS**: Cmd+C 두 번
 
 Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다.
 
 ## 요구사항
 
 - Python 3.8+
-- Linux (X11)
+- Linux (X11) 또는 macOS
 - **Claude Code (필수)** - 아래 참고
 
 ### Claude Code 설치 (필수)
@@ -36,17 +38,21 @@ cd cc2translate
 ./install.sh
 ```
 
+설치 스크립트가 자동으로 OS를 감지하고 적절하게 설치합니다.
+
 ## 사용법
 
 ### 실행
 ```bash
 cc2translate
 ```
-또는 앱 메뉴에서 "CC2Translate" 검색
+
+**Linux**: 앱 메뉴에서 "CC2Translate" 검색
+**macOS**: Spotlight에서 "CC2Translate" 검색 또는 `~/Applications/CC2Translate.app` 실행
 
 ### 번역하기
 1. 아무 텍스트를 드래그해서 선택
-2. **Ctrl+C 두 번** 빠르게 누르기
+2. **복사 단축키 두 번** 빠르게 누르기 (Linux: Ctrl+C, macOS: Cmd+C)
 3. 자동으로 번역 창이 열리고 번역 시작
 
 ### 기능
@@ -56,12 +62,15 @@ cc2translate
 
 ## 제거
 
-```bash
-~/.local/share/cc2translate/uninstall.sh
-```
-또는
+**Linux**:
 ```bash
 ./uninstall.sh
+```
+
+**macOS**:
+```bash
+sudo rm /usr/local/bin/cc2translate
+rm -rf ~/Applications/CC2Translate.app
 ```
 
 ## 파일 구조
@@ -69,8 +78,8 @@ cc2translate
 ```
 cc2translate/
 ├── cc2translate.py    # 메인 프로그램
-├── install.sh         # 설치 스크립트
-├── uninstall.sh       # 제거 스크립트
+├── install.sh         # 설치 스크립트 (Linux/macOS)
+├── uninstall.sh       # 제거 스크립트 (Linux)
 ├── requirements.txt   # Python 의존성
 └── README.md          # 이 파일
 ```
