@@ -26,23 +26,8 @@ Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰�
 
 > **macOS는 아직 테스트가 완료되지 않아 정상적으로 실행되지 않을 수 있습니다.**
 
-### Claude Code 설치
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-또는 https://claude.ai/code 에서 설치 방법을 확인하세요.
-
-> Claude Code를 사용하려면 [Claude Max/Pro 구독](https://claude.ai) 또는 API 키가 필요합니다.
-
-### Gemini CLI 설치 (선택)
-
-```bash
-npm install -g @google/gemini-cli
-```
-
-또는 https://github.com/google-gemini/gemini-cli 에서 설치 방법을 확인하세요.
+- [Claude Code 설치](https://claude.ai/code)
+- [Gemini CLI 설치](https://github.com/google-gemini/gemini-cli) (선택)
 
 ## 설치
 
