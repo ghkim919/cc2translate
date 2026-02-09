@@ -26,14 +26,33 @@ class HotkeyListener:
     def stop(self):
         self.listener.stop()
 
+    def _is_c_key(self, key):
+        if not hasattr(key, 'char') or key.char is None:
+            return False
+        # macOS에서 Cmd+C를 누르면 char가 '\x03' (ETX)으로 전달됨
+        if IS_MACOS:
+            return key.char in ('c', '\x03')
+        return key.char == 'c'
+
     def _on_press(self, key):
         try:
             if IS_MACOS:
                 if key in (keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r):
                     self.modifier_pressed = True
+                    return
             else:
                 if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
                     self.modifier_pressed = True
+                    return
+
+            # press 시점에서 감지 (release에서 하면 modifier 해제 순서 문제 발생)
+            if self._is_c_key(key) and self.modifier_pressed:
+                current_time = time.time()
+                if current_time - self.last_copy_time < 0.5:
+                    self.last_copy_time = 0
+                    self.on_double_copy()
+                else:
+                    self.last_copy_time = current_time
         except Exception:
             pass
 
@@ -45,13 +64,5 @@ class HotkeyListener:
             else:
                 if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
                     self.modifier_pressed = False
-
-            if hasattr(key, 'char') and key.char == 'c' and self.modifier_pressed:
-                current_time = time.time()
-                if current_time - self.last_copy_time < 0.5:
-                    self.last_copy_time = 0
-                    self.on_double_copy()
-                else:
-                    self.last_copy_time = current_time
         except Exception:
             pass

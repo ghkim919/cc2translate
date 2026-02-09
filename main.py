@@ -6,6 +6,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 
+from constants import IS_MACOS
 from window import TranslatorWindow
 
 APP_ID = "cc2translate-single-instance"
@@ -21,9 +22,31 @@ def is_already_running():
     return False
 
 
+def check_accessibility():
+    """macOS에서 Accessibility 권한이 없으면 시스템 다이얼로그를 띄움"""
+    if not IS_MACOS:
+        return
+    from ApplicationServices import AXIsProcessTrustedWithOptions
+    from CoreFoundation import kCFBooleanTrue
+
+    trusted = AXIsProcessTrustedWithOptions({
+        "AXTrustedCheckOptionPrompt": kCFBooleanTrue
+    })
+    if not trusted:
+        from PyQt5.QtWidgets import QMessageBox
+        QMessageBox.information(
+            None, "CC2Translate",
+            "손쉬운 사용(Accessibility) 권한이 필요합니다.\n"
+            "시스템 설정에서 CC2Translate을 허용한 후 앱을 다시 실행해주세요."
+        )
+        sys.exit(0)
+
+
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+
+    check_accessibility()
 
     if is_already_running():
         print("CC2Translate가 이미 실행 중입니다.")

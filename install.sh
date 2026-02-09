@@ -62,9 +62,13 @@ echo -e "      ${GREEN}Claude CLI $CLAUDE_VERSION 확인됨${NC}"
 
 # 빌드 의존성 설치
 echo -e "${YELLOW}[3/6]${NC} 빌드 의존성 설치 중..."
-pip3 install --user -q PyQt5 pynput pyinstaller 2>/dev/null || {
-    pip3 install -q PyQt5 pynput pyinstaller 2>/dev/null || {
-        pip install --user -q PyQt5 pynput pyinstaller
+DEPS="PyQt5 pynput pyinstaller"
+if [ "$OS" = "macos" ]; then
+    DEPS="$DEPS pyobjc-framework-ApplicationServices"
+fi
+pip3 install --user -q $DEPS 2>/dev/null || {
+    pip3 install -q $DEPS 2>/dev/null || {
+        pip install --user -q $DEPS
     }
 }
 echo -e "      ${GREEN}의존성 설치 완료${NC}"
@@ -74,16 +78,16 @@ echo -e "${YELLOW}[4/6]${NC} 바이너리 빌드 중... (1-2분 소요)"
 cd "$SCRIPT_DIR"
 
 if [ "$OS" = "macos" ]; then
-    # macOS: .app 번들 생성
+    # macOS: 정식 .app 번들 생성 (Input Monitoring 권한 부여 가능)
     python3 -m PyInstaller \
-        --onefile \
         --windowed \
         --name CC2Translate \
+        --osx-bundle-identifier com.cc2translate.app \
         --clean \
         --noconfirm \
         main.py 2>/dev/null || {
         echo -e "${YELLOW}상세 로그로 재시도...${NC}"
-        python3 -m PyInstaller --onefile --windowed --name CC2Translate main.py
+        python3 -m PyInstaller --windowed --name CC2Translate --osx-bundle-identifier com.cc2translate.app main.py
     }
 else
     # Linux
@@ -106,7 +110,20 @@ mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
 
 if [ "$OS" = "macos" ]; then
-    cp "$SCRIPT_DIR/dist/CC2Translate" "$BIN_DIR/cc2translate"
+    # macOS: PyInstaller가 생성한 정식 .app 번들 설치
+    APP_BUNDLE="$SCRIPT_DIR/dist/CC2Translate.app"
+
+    # Info.plist에 LSUIElement 추가 (Dock에 아이콘 안 보이게)
+    /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$APP_BUNDLE/Contents/Info.plist"
+
+    # ~/Applications에 복사
+    mkdir -p "$APP_DIR"
+    rm -rf "$APP_DIR/CC2Translate.app"
+    cp -R "$APP_BUNDLE" "$APP_DIR/"
+
+    # CLI에서도 실행 가능하도록 심볼릭 링크
+    ln -sf "$APP_DIR/CC2Translate.app/Contents/MacOS/CC2Translate" "$BIN_DIR/cc2translate"
 else
     cp "$SCRIPT_DIR/dist/cc2translate" "$BIN_DIR/"
 fi
@@ -116,37 +133,7 @@ echo -e "      ${GREEN}프로그램 설치 완료${NC}"
 # 앱 등록
 echo -e "${YELLOW}[6/6]${NC} 앱 등록 중..."
 if [ "$OS" = "macos" ]; then
-    # macOS: Applications 폴더에 심볼릭 링크 또는 Automator 앱 생성
-    mkdir -p "$APP_DIR"
-
-    # 간단한 실행 스크립트로 .app 생성
-    APP_BUNDLE="$APP_DIR/CC2Translate.app"
-    mkdir -p "$APP_BUNDLE/Contents/MacOS"
-    cat > "$APP_BUNDLE/Contents/MacOS/CC2Translate" << APPEOF
-#!/bin/bash
-"\$HOME/.local/bin/cc2translate"
-APPEOF
-    chmod +x "$APP_BUNDLE/Contents/MacOS/CC2Translate"
-
-    cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLISTEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>CC2Translate</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.cc2translate.app</string>
-    <key>CFBundleName</key>
-    <string>CC2Translate</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>LSUIElement</key>
-    <true/>
-</dict>
-</plist>
-PLISTEOF
-    echo -e "      ${GREEN}앱 번들 생성 완료: $APP_BUNDLE${NC}"
+    echo -e "      ${GREEN}앱 번들 설치 완료: $APP_DIR/CC2Translate.app${NC}"
 else
     # Linux: .desktop 파일 생성
     mkdir -p "$HOME/.local/share/applications"
@@ -198,8 +185,13 @@ echo ""
 echo "사용법:"
 if [ "$OS" = "macos" ]; then
     echo "  - 텍스트를 드래그하고 Cmd+C 두 번 누르면 자동 번역"
+    echo "  - 창을 닫으면 시스템 트레이로 최소화"
+    echo ""
+    echo -e "${YELLOW}[macOS 권한 설정]${NC}"
+    echo "  최초 실행 시 시스템 설정 > 개인정보 보호 및 보안 > 입력 모니터링에서"
+    echo "  CC2Translate을 허용해주세요."
 else
     echo "  - 텍스트를 드래그하고 Ctrl+C 두 번 누르면 자동 번역"
+    echo "  - 창을 닫으면 시스템 트레이로 최소화"
 fi
-echo "  - 창을 닫으면 시스템 트레이로 최소화"
 echo ""
