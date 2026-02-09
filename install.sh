@@ -20,7 +20,7 @@ INSTALL_DIR="$HOME/.local/share/cc2translate"
 BIN_DIR="$HOME/.local/bin"
 
 # Python 확인
-echo -e "${YELLOW}[1/5]${NC} Python 확인 중..."
+echo -e "${YELLOW}[1/6]${NC} Python 확인 중..."
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}오류: Python3가 설치되어 있지 않습니다.${NC}"
     echo "다음 명령어로 설치하세요: sudo apt install python3 python3-pip"
@@ -30,40 +30,52 @@ PYTHON_VERSION=$(python3 --version)
 echo -e "      ${GREEN}$PYTHON_VERSION 확인됨${NC}"
 
 # Claude CLI 확인
-echo -e "${YELLOW}[2/5]${NC} Claude CLI 확인 중..."
+echo -e "${YELLOW}[2/6]${NC} Claude CLI 확인 중..."
 if ! command -v claude &> /dev/null; then
     echo -e "${RED}오류: Claude CLI가 설치되어 있지 않습니다.${NC}"
-    echo "https://claude.ai/code 에서 설치 방법을 확인하세요."
+    echo ""
+    echo "Claude Code를 먼저 설치하세요:"
+    echo "  npm install -g @anthropic-ai/claude-code"
+    echo ""
+    echo "또는 https://claude.ai/code 에서 설치 방법을 확인하세요."
     exit 1
 fi
 CLAUDE_VERSION=$(claude --version 2>/dev/null || echo "버전 확인 불가")
 echo -e "      ${GREEN}Claude CLI $CLAUDE_VERSION 확인됨${NC}"
 
-# 의존성 설치
-echo -e "${YELLOW}[3/5]${NC} 의존성 패키지 설치 중..."
-pip3 install --user -q PyQt5 pynput 2>/dev/null || {
-    echo -e "${YELLOW}      pip로 설치 시도 중...${NC}"
-    pip install --user -q PyQt5 pynput
+# 빌드 의존성 설치
+echo -e "${YELLOW}[3/6]${NC} 빌드 의존성 설치 중..."
+pip3 install --user -q PyQt5 pynput pyinstaller 2>/dev/null || {
+    pip install --user -q PyQt5 pynput pyinstaller
 }
 echo -e "      ${GREEN}의존성 설치 완료${NC}"
 
+# 바이너리 빌드
+echo -e "${YELLOW}[4/6]${NC} 바이너리 빌드 중... (1-2분 소요)"
+cd "$SCRIPT_DIR"
+python3 -m PyInstaller \
+    --onefile \
+    --windowed \
+    --name cc2translate \
+    --clean \
+    --noconfirm \
+    cc2translate.py 2>/dev/null || {
+    echo -e "${RED}빌드 실패. 상세 로그:${NC}"
+    python3 -m PyInstaller --onefile --windowed --name cc2translate cc2translate.py
+    exit 1
+}
+echo -e "      ${GREEN}바이너리 빌드 완료${NC}"
+
 # 프로그램 설치
-echo -e "${YELLOW}[4/5]${NC} 프로그램 설치 중..."
+echo -e "${YELLOW}[5/6]${NC} 프로그램 설치 중..."
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
-cp "$SCRIPT_DIR/cc2translate.py" "$INSTALL_DIR/"
-chmod +x "$INSTALL_DIR/cc2translate.py"
-
-# 실행 스크립트 생성
-cat > "$BIN_DIR/cc2translate" << 'EOF'
-#!/bin/bash
-python3 "$HOME/.local/share/cc2translate/cc2translate.py" "$@"
-EOF
+cp "$SCRIPT_DIR/dist/cc2translate" "$BIN_DIR/"
 chmod +x "$BIN_DIR/cc2translate"
 echo -e "      ${GREEN}프로그램 설치 완료${NC}"
 
 # 데스크톱 엔트리 생성
-echo -e "${YELLOW}[5/5]${NC} 앱 메뉴 등록 중..."
+echo -e "${YELLOW}[6/6]${NC} 앱 메뉴 등록 중..."
 mkdir -p "$HOME/.local/share/applications"
 cat > "$HOME/.local/share/applications/cc2translate.desktop" << EOF
 [Desktop Entry]
@@ -77,6 +89,9 @@ Categories=Utility;Office;
 Keywords=translate;translation;claude;번역;
 EOF
 echo -e "      ${GREEN}앱 메뉴 등록 완료${NC}"
+
+# 빌드 파일 정리
+rm -rf "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR"/*.spec 2>/dev/null
 
 # PATH 확인
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
