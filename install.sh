@@ -113,10 +113,6 @@ if [ "$OS" = "macos" ]; then
     # macOS: PyInstaller가 생성한 정식 .app 번들 설치
     APP_BUNDLE="$SCRIPT_DIR/dist/CC2Translate.app"
 
-    # Info.plist에 LSUIElement 추가 (Dock에 아이콘 안 보이게)
-    /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || \
-    /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$APP_BUNDLE/Contents/Info.plist"
-
     # ~/Applications에 복사
     mkdir -p "$APP_DIR"
     rm -rf "$APP_DIR/CC2Translate.app"
@@ -188,7 +184,7 @@ if [ "$OS" = "macos" ]; then
     echo "  - 창을 닫으면 시스템 트레이로 최소화"
     echo ""
     echo -e "${YELLOW}[macOS 권한 설정]${NC}"
-    echo "  최초 실행 시 시스템 설정 > 개인정보 보호 및 보안 > 입력 모니터링에서"
+    echo "  최초 실행 시 시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서"
     echo "  CC2Translate을 허용해주세요."
 else
     echo "  - 텍스트를 드래그하고 Ctrl+C 두 번 누르면 자동 번역"
