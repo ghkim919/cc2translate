@@ -4,7 +4,7 @@
 - **Linux**: Ctrl+C 두 번
 - **macOS**: Cmd+C 두 번
 
-Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다.
+Claude Max 결제하느라 DeepL 결제할 돈이 없어서 돌려막기로 쓰려고 만들었습니다. 돈 있으면 DeepL 쓰세요... DeepL이 훨씬 좋습니다.
 
 ![example](example.gif)
 
