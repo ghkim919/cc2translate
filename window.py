@@ -7,13 +7,15 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QTextEdit, QComboBox, QLabel, QPushButton, QSplitter,
     QSystemTrayIcon, QMenu, QAction, QDialog, QDialogButtonBox,
+    QListWidget, QListWidgetItem, QLineEdit,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer
 from PyQt5.QtGui import QFont
 
 from constants import LANGUAGES, ALL_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS, IS_MACOS
 from translator import translate, TranslationError
 from hotkey import HotkeyListener
+import history
 
 
 class EnvGuideDialog(QDialog):
@@ -161,6 +163,17 @@ class TranslatorWindow(QMainWindow):
         """)
         toolbar.addWidget(self.translate_btn)
 
+        self.history_btn = QPushButton("기록")
+        self.history_btn.clicked.connect(self._toggle_history)
+        self.history_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e0e0e0; color: #333;
+                border: none; border-radius: 3px; padding: 5px 15px;
+            }
+            QPushButton:hover { background-color: #d0d0d0; }
+        """)
+        toolbar.addWidget(self.history_btn)
+
         self.settings_btn = QPushButton("설정")
         self.settings_btn.clicked.connect(self._show_settings)
         self.settings_btn.setStyleSheet("""
@@ -179,6 +192,13 @@ class TranslatorWindow(QMainWindow):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(5, 5, 5, 5)
 
+        self.outer_splitter = QSplitter(Qt.Horizontal)
+
+        # 히스토리 패널
+        self._init_history_panel()
+        self.outer_splitter.addWidget(self.history_panel)
+
+        # 번역 영역
         splitter = QSplitter(Qt.Horizontal)
 
         self.src_text = QTextEdit()
@@ -204,7 +224,64 @@ class TranslatorWindow(QMainWindow):
         splitter.addWidget(self.src_text)
         splitter.addWidget(self.tgt_text)
         splitter.setSizes([450, 450])
-        main_layout.addWidget(splitter)
+
+        self.outer_splitter.addWidget(splitter)
+        self.history_panel.hide()
+        self.outer_splitter.setSizes([0, 900])
+        main_layout.addWidget(self.outer_splitter)
+
+    def _init_history_panel(self):
+        self.history_panel = QWidget()
+        layout = QVBoxLayout(self.history_panel)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+
+        header = QLabel("번역 기록")
+        header.setFont(QFont("Sans", 12, QFont.Bold))
+        header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(header)
+
+        self.history_search = QLineEdit()
+        self.history_search.setPlaceholderText("검색...")
+        self.history_search.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc; border-radius: 3px; padding: 5px;
+            }
+        """)
+        self._search_timer = QTimer()
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._on_history_search)
+        self.history_search.textChanged.connect(lambda: self._search_timer.start())
+        layout.addWidget(self.history_search)
+
+        self.history_list = QListWidget()
+        self.history_list.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc; border-radius: 3px;
+            }
+            QListWidget::item {
+                padding: 6px; border-bottom: 1px solid #eee;
+            }
+            QListWidget::item:selected {
+                background-color: #d0e4f7;
+            }
+        """)
+        self.history_list.itemClicked.connect(self._on_history_item_clicked)
+        self.history_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.history_list.customContextMenuRequested.connect(self._on_history_context_menu)
+        layout.addWidget(self.history_list)
+
+        clear_all_btn = QPushButton("전체 삭제")
+        clear_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #d9534f; color: white;
+                border: none; border-radius: 3px; padding: 5px 15px;
+            }
+            QPushButton:hover { background-color: #c9302c; }
+        """)
+        clear_all_btn.clicked.connect(self._delete_all_history)
+        layout.addWidget(clear_all_btn)
 
     # ── 시스템 트레이 ──────────────────────────────────────
 
@@ -310,6 +387,18 @@ class TranslatorWindow(QMainWindow):
         self.translate_btn.setEnabled(True)
         self.statusBar().showMessage("번역 완료")
 
+        src_text = self.src_text.toPlainText().strip()
+        if src_text and translation:
+            history.add_entry(
+                src_text,
+                translation,
+                self.src_lang_combo.currentText(),
+                self.tgt_lang_combo.currentText(),
+                self.model_combo.currentText(),
+            )
+            if self.history_panel.isVisible():
+                self._load_history()
+
     def _on_translation_error(self, error):
         self.tgt_text.setText(f"오류: {error}")
         self.translate_btn.setEnabled(True)
@@ -344,6 +433,76 @@ class TranslatorWindow(QMainWindow):
             EnvGuideDialog("DEEPL_API_KEY", self).exec_()
             return False
         return True
+
+    # ── 히스토리 ─────────────────────────────────────────────
+
+    def _toggle_history(self):
+        if self.history_panel.isVisible():
+            self.history_panel.hide()
+            self.outer_splitter.setSizes([0, 900])
+        else:
+            self._load_history()
+            self.history_panel.show()
+            self.outer_splitter.setSizes([250, 650])
+
+    def _load_history(self):
+        search = self.history_search.text().strip()
+        entries = history.get_entries(search)
+        self.history_list.clear()
+        for entry in entries:
+            preview = entry["src_text"][:60].replace("\n", " ")
+            if len(entry["src_text"]) > 60:
+                preview += "…"
+            time_str = self._format_time(entry["created_at"])
+            label = f"{preview}\n{entry['model']} | {entry['tgt_lang']} | {time_str}"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, entry)
+            self.history_list.addItem(item)
+
+    def _on_history_item_clicked(self, item):
+        entry = item.data(Qt.UserRole)
+        self.src_text.setText(entry["src_text"])
+        self.tgt_text.setText(entry["tgt_text"])
+        # 모델/언어 복원
+        idx = self.model_combo.findText(entry["model"])
+        if idx >= 0:
+            self.model_combo.setCurrentIndex(idx)
+        idx = self.src_lang_combo.findText(entry["src_lang"])
+        if idx >= 0:
+            self.src_lang_combo.setCurrentIndex(idx)
+        idx = self.tgt_lang_combo.findText(entry["tgt_lang"])
+        if idx >= 0:
+            self.tgt_lang_combo.setCurrentIndex(idx)
+        self.statusBar().showMessage("기록에서 복원됨")
+
+    def _on_history_search(self):
+        self._load_history()
+
+    def _on_history_context_menu(self, pos):
+        item = self.history_list.itemAt(pos)
+        if not item:
+            return
+        menu = QMenu(self)
+        delete_action = menu.addAction("삭제")
+        action = menu.exec_(self.history_list.mapToGlobal(pos))
+        if action == delete_action:
+            entry = item.data(Qt.UserRole)
+            history.delete_entry(entry["id"])
+            self._load_history()
+
+    def _delete_all_history(self):
+        history.delete_all()
+        self.history_list.clear()
+        self.statusBar().showMessage("모든 기록이 삭제되었습니다")
+
+    @staticmethod
+    def _format_time(timestamp):
+        from datetime import datetime
+        try:
+            dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+            return dt.strftime("%m/%d %H:%M")
+        except (ValueError, TypeError):
+            return timestamp or ""
 
     # ── 기타 액션 ──────────────────────────────────────────
 
