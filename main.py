@@ -23,23 +23,41 @@ def is_already_running():
 
 
 def check_accessibility():
-    """macOS에서 Accessibility 권한이 없으면 시스템 다이얼로그를 띄움"""
+    """macOS에서 Accessibility 권한이 없으면 시스템 다이얼로그를 띄우고 허용될 때까지 대기"""
     if not IS_MACOS:
         return
     from ApplicationServices import AXIsProcessTrustedWithOptions
-    from CoreFoundation import kCFBooleanTrue
+    from CoreFoundation import kCFBooleanTrue, kCFBooleanFalse
 
     trusted = AXIsProcessTrustedWithOptions({
         "AXTrustedCheckOptionPrompt": kCFBooleanTrue
     })
-    if not trusted:
-        from PyQt5.QtWidgets import QMessageBox
-        QMessageBox.information(
-            None, "CC2Translate",
-            "손쉬운 사용(Accessibility) 권한이 필요합니다.\n"
-            "시스템 설정에서 CC2Translate을 허용한 후 앱을 다시 실행해주세요."
+    if trusted:
+        return
+
+    from PyQt5.QtWidgets import QMessageBox, QPushButton
+    msg = QMessageBox()
+    msg.setWindowTitle("CC2Translate")
+    msg.setText(
+        "손쉬운 사용(Accessibility) 권한이 필요합니다.\n"
+        "시스템 설정에서 CC2Translate을 허용한 후\n"
+        "아래 '권한 확인' 버튼을 눌러주세요."
+    )
+    retry_btn = msg.addButton("권한 확인", QMessageBox.AcceptRole)
+    quit_btn = msg.addButton("종료", QMessageBox.RejectRole)
+
+    while True:
+        msg.exec_()
+        if msg.clickedButton() == quit_btn:
+            sys.exit(0)
+        # 프롬프트 없이 현재 상태만 확인
+        if AXIsProcessTrustedWithOptions({"AXTrustedCheckOptionPrompt": kCFBooleanFalse}):
+            break
+        msg.setText(
+            "아직 권한이 감지되지 않았습니다.\n"
+            "시스템 설정 > 손쉬운 사용에서 CC2Translate을 허용해주세요.\n\n"
+            "허용 후 '권한 확인' 버튼을 눌러주세요."
         )
-        sys.exit(0)
 
 
 def main():

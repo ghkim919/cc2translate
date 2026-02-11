@@ -83,6 +83,11 @@ cc2translate
 **Linux**: 앱 메뉴에서 "CC2Translate" 검색 <br>
 **macOS**: Spotlight에서 "CC2Translate" 검색 또는 `~/Applications/CC2Translate.app` 실행
 
+### macOS 권한 안내
+
+- **손쉬운 사용(Accessibility)**: Cmd+C 단축키 감지에 필요합니다. 최초 실행 시 권한 요청 팝업이 뜨면 시스템 설정에서 허용 후 "권한 확인" 버튼을 눌러주세요.
+- **파일 접근, 음악 등 기타 권한**: CLI 모델(Claude, Gemini) 사용 시 subprocess로 외부 CLI를 호출하기 때문에 macOS가 부모 앱에 대해 권한을 요청할 수 있습니다. CC2Translate 자체는 해당 권한을 사용하지 않으며, 처음 한 번만 허용하면 이후 다시 묻지 않습니다. API 직접 호출 모델(Gemini API, DeepL API)은 이런 권한 요청이 발생하지 않습니다.
+
 ### 번역하기
 1. 아무 텍스트를 드래그해서 선택
 2. **복사 단축키 두 번** 빠르게 누르기 (Linux: Ctrl+C, macOS: Cmd+C)
