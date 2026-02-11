@@ -4,8 +4,8 @@ import os
 import threading
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QTextEdit, QComboBox, QLabel, QPushButton, QSplitter,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QTextEdit, QComboBox, QLabel, QPushButton, QSplitter, QSlider,
     QSystemTrayIcon, QMenu, QAction, QDialog, QDialogButtonBox,
     QListWidget, QListWidgetItem, QLineEdit,
 )
@@ -228,7 +228,37 @@ class TranslatorWindow(QMainWindow):
         self.outer_splitter.addWidget(splitter)
         self.history_panel.hide()
         self.outer_splitter.setSizes([0, 900])
-        main_layout.addWidget(self.outer_splitter)
+        main_layout.addWidget(self.outer_splitter, 1)
+
+        # 글자 크기 슬라이더 (하단 컴팩트)
+        slider_layout = QHBoxLayout()
+        slider_layout.setContentsMargins(5, 0, 5, 0)
+        slider_layout.setSpacing(4)
+
+        small_label = QLabel("A")
+        small_label.setFont(QFont("Sans", 7))
+        small_label.setStyleSheet("color: #888;")
+        slider_layout.addWidget(small_label)
+
+        self.font_slider = QSlider(Qt.Horizontal)
+        self.font_slider.setRange(8, 24)
+        self.font_slider.setValue(11)
+        self.font_slider.setMaximumWidth(120)
+        self.font_slider.setFixedHeight(16)
+        self.font_slider.valueChanged.connect(self._on_font_size_changed)
+        slider_layout.addWidget(self.font_slider)
+
+        big_label = QLabel("A")
+        big_label.setFont(QFont("Sans", 11))
+        big_label.setStyleSheet("color: #888;")
+        slider_layout.addWidget(big_label)
+
+        self.font_size_label = QLabel("11pt")
+        self.font_size_label.setStyleSheet("color: #888; font-size: 10px;")
+        slider_layout.addWidget(self.font_size_label)
+
+        slider_layout.addStretch()
+        main_layout.addLayout(slider_layout)
 
     def _init_history_panel(self):
         self.history_panel = QWidget()
@@ -503,6 +533,14 @@ class TranslatorWindow(QMainWindow):
             return dt.strftime("%m/%d %H:%M")
         except (ValueError, TypeError):
             return timestamp or ""
+
+    # ── 글자 크기 ──────────────────────────────────────────
+
+    def _on_font_size_changed(self, value):
+        font = QFont("Sans", value)
+        self.src_text.setFont(font)
+        self.tgt_text.setFont(font)
+        self.font_size_label.setText(f"{value}pt")
 
     # ── 기타 액션 ──────────────────────────────────────────
 
