@@ -47,10 +47,13 @@ GEMINI_API_MODELS = {
 
 - Python 3.8+
 - Linux (X11) 또는 macOS
-- **Claude Code** 또는 **Gemini CLI** (CLI 모델 사용 시)
+
+### CLI 모델 사용 시 (선택)
+
+CLI 기반 모델을 사용하려면 해당 CLI를 별도로 설치해야 합니다. API 모델만 사용할 경우 설치할 필요 없습니다.
 
 - [Claude Code 설치](https://claude.ai/code)
-- [Gemini CLI 설치](https://github.com/google-gemini/gemini-cli) (선택)
+- [Gemini CLI 설치](https://github.com/google-gemini/gemini-cli)
 
 ### API 키 설정 (API 모델 사용 시)
 

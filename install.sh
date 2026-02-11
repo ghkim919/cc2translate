@@ -33,7 +33,7 @@ BIN_DIR="$HOME/.local/bin"
 APP_DIR="$HOME/Applications"
 
 # Python 확인
-echo -e "${YELLOW}[1/6]${NC} Python 확인 중..."
+echo -e "${YELLOW}[1/5]${NC} Python 확인 중..."
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}오류: Python3가 설치되어 있지 않습니다.${NC}"
     if [ "$OS" = "macos" ]; then
@@ -46,22 +46,8 @@ fi
 PYTHON_VERSION=$(python3 --version)
 echo -e "      ${GREEN}$PYTHON_VERSION 확인됨${NC}"
 
-# Claude CLI 확인
-echo -e "${YELLOW}[2/6]${NC} Claude CLI 확인 중..."
-if ! command -v claude &> /dev/null; then
-    echo -e "${RED}오류: Claude CLI가 설치되어 있지 않습니다.${NC}"
-    echo ""
-    echo "Claude Code를 먼저 설치하세요:"
-    echo "  npm install -g @anthropic-ai/claude-code"
-    echo ""
-    echo "또는 https://claude.ai/code 에서 설치 방법을 확인하세요."
-    exit 1
-fi
-CLAUDE_VERSION=$(claude --version 2>/dev/null || echo "버전 확인 불가")
-echo -e "      ${GREEN}Claude CLI $CLAUDE_VERSION 확인됨${NC}"
-
 # 빌드 의존성 설치
-echo -e "${YELLOW}[3/6]${NC} 빌드 의존성 설치 중..."
+echo -e "${YELLOW}[2/5]${NC} 빌드 의존성 설치 중..."
 DEPS="PyQt5 pynput pyinstaller requests"
 if [ "$OS" = "macos" ]; then
     DEPS="$DEPS pyobjc-framework-ApplicationServices pyobjc-framework-Quartz"
@@ -74,7 +60,7 @@ pip3 install --user -q $DEPS 2>/dev/null || {
 echo -e "      ${GREEN}의존성 설치 완료${NC}"
 
 # 바이너리 빌드
-echo -e "${YELLOW}[4/6]${NC} 바이너리 빌드 중... (1-2분 소요)"
+echo -e "${YELLOW}[3/5]${NC} 바이너리 빌드 중... (1-2분 소요)"
 cd "$SCRIPT_DIR"
 
 if [ "$OS" = "macos" ]; then
@@ -105,7 +91,7 @@ fi
 echo -e "      ${GREEN}바이너리 빌드 완료${NC}"
 
 # 프로그램 설치
-echo -e "${YELLOW}[5/6]${NC} 프로그램 설치 중..."
+echo -e "${YELLOW}[4/5]${NC} 프로그램 설치 중..."
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
 
@@ -127,7 +113,7 @@ chmod +x "$BIN_DIR/cc2translate"
 echo -e "      ${GREEN}프로그램 설치 완료${NC}"
 
 # 앱 등록
-echo -e "${YELLOW}[6/6]${NC} 앱 등록 중..."
+echo -e "${YELLOW}[5/5]${NC} 앱 등록 중..."
 if [ "$OS" = "macos" ]; then
     echo -e "      ${GREEN}앱 번들 설치 완료: $APP_DIR/CC2Translate.app${NC}"
 else
