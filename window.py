@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QComboBox, QLabel, QPushButton, QSplitter, QSlider,
     QSystemTrayIcon, QMenu, QAction, QDialog, QDialogButtonBox,
-    QListWidget, QListWidgetItem, QLineEdit,
+    QListWidget, QListWidgetItem, QLineEdit, QMessageBox,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer
 from PyQt5.QtGui import QFont
@@ -16,6 +16,7 @@ from constants import LANGUAGES, ALL_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS
 from translator import translate, TranslationError
 from hotkey import HotkeyListener
 import history
+import updater
 
 
 class EnvGuideDialog(QDialog):
@@ -49,6 +50,10 @@ class SignalEmitter(QObject):
     show_window = pyqtSignal()
     translation_done = pyqtSignal(str)
     translation_error = pyqtSignal(str)
+    update_available = pyqtSignal(str)  # remote_sha
+    update_progress = pyqtSignal(str)   # progress message
+    update_done = pyqtSignal()
+    update_error = pyqtSignal(str)      # error message
 
 
 class TranslatorWindow(QMainWindow):
@@ -58,12 +63,18 @@ class TranslatorWindow(QMainWindow):
         self.signal_emitter.show_window.connect(self.show_and_activate)
         self.signal_emitter.translation_done.connect(self._on_translation_done)
         self.signal_emitter.translation_error.connect(self._on_translation_error)
+        self.signal_emitter.update_available.connect(self._on_update_available)
+        self.signal_emitter.update_progress.connect(self._on_update_progress)
+        self.signal_emitter.update_done.connect(self._on_update_done)
+        self.signal_emitter.update_error.connect(self._on_update_error)
 
         self.shortcut_text = "Cmd+C" if IS_MACOS else "Ctrl+C"
+        self._updating = False
 
         self._init_ui()
         self._setup_hotkey()
         self._setup_tray()
+        self._check_for_update()
 
     # ── UI 초기화 ──────────────────────────────────────────
 
@@ -534,6 +545,70 @@ class TranslatorWindow(QMainWindow):
         except (ValueError, TypeError):
             return timestamp or ""
 
+    # ── 자동 업데이트 ────────────────────────────────────────
+
+    def _check_for_update(self):
+        """백그라운드에서 업데이트를 확인한다."""
+        def _worker():
+            has_update, remote_sha, _error = updater.check_for_update()
+            if has_update and remote_sha:
+                self.signal_emitter.update_available.emit(remote_sha)
+
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
+
+    def _on_update_available(self, remote_sha):
+        msg = QMessageBox(self)
+        msg.setWindowTitle("업데이트")
+        msg.setText("새로운 업데이트가 있습니다.\n업데이트를 설치하시겠습니까?")
+        update_btn = msg.addButton("업데이트", QMessageBox.AcceptRole)
+        msg.addButton("나중에", QMessageBox.RejectRole)
+        skip_btn = msg.addButton("이 버전 건너뛰기", QMessageBox.DestructiveRole)
+
+        msg.exec_()
+        clicked = msg.clickedButton()
+
+        if clicked == update_btn:
+            self._start_update()
+        elif clicked == skip_btn:
+            updater.skip_version(remote_sha)
+
+    def _start_update(self):
+        self._updating = True
+        updater.run_update(
+            on_progress=lambda msg: self.signal_emitter.update_progress.emit(msg),
+            on_done=lambda: self.signal_emitter.update_done.emit(),
+            on_error=lambda err: self.signal_emitter.update_error.emit(err),
+        )
+
+    def _on_update_progress(self, message):
+        self.statusBar().showMessage(message)
+
+    def _on_update_done(self):
+        self._updating = False
+        msg = QMessageBox(self)
+        msg.setWindowTitle("업데이트 완료")
+        msg.setText("업데이트가 완료되었습니다.\n앱을 재시작하시겠습니까?")
+        restart_btn = msg.addButton("재시작", QMessageBox.AcceptRole)
+        msg.addButton("나중에", QMessageBox.RejectRole)
+
+        msg.exec_()
+        if msg.clickedButton() == restart_btn:
+            self._restart_app()
+        else:
+            self.statusBar().showMessage("업데이트 완료 - 다음 실행 시 적용됩니다")
+
+    def _on_update_error(self, error):
+        self._updating = False
+        QMessageBox.warning(self, "업데이트 실패", error)
+        self.statusBar().showMessage(f"준비됨 - {self.shortcut_text} 두 번으로 번역")
+
+    def _restart_app(self):
+        import subprocess
+        cmd = updater.get_restart_command()
+        subprocess.Popen(cmd)
+        self._quit_app(force=True)
+
     # ── 글자 크기 ──────────────────────────────────────────
 
     def _on_font_size_changed(self, value):
@@ -558,6 +633,14 @@ class TranslatorWindow(QMainWindow):
             self.statusBar().showMessage("복사할 내용이 없습니다")
 
     def closeEvent(self, event):
+        if self._updating:
+            QMessageBox.information(
+                self, "업데이트 중",
+                "업데이트가 진행 중입니다. 완료될 때까지 기다려주세요."
+            )
+            event.ignore()
+            return
+
         event.ignore()
         self.hide()
         self.tray_icon.showMessage(
@@ -567,7 +650,13 @@ class TranslatorWindow(QMainWindow):
             2000
         )
 
-    def _quit_app(self):
+    def _quit_app(self, force=False):
+        if self._updating and not force:
+            QMessageBox.information(
+                self, "업데이트 중",
+                "업데이트가 진행 중입니다. 완료될 때까지 기다려주세요."
+            )
+            return
         self.hotkey_listener.stop()
         self.tray_icon.hide()
         QApplication.quit()

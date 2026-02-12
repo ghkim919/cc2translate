@@ -63,17 +63,21 @@ echo -e "      ${GREEN}의존성 설치 완료${NC}"
 echo -e "${YELLOW}[3/5]${NC} 바이너리 빌드 중... (1-2분 소요)"
 cd "$SCRIPT_DIR"
 
+# 버전 정보 생성 (git commit hash)
+git rev-parse HEAD > version.txt
+
 if [ "$OS" = "macos" ]; then
     # macOS: 정식 .app 번들 생성 (Input Monitoring 권한 부여 가능)
     python3 -m PyInstaller \
         --windowed \
         --name CC2Translate \
         --osx-bundle-identifier com.cc2translate.app \
+        --add-data "version.txt:." \
         --clean \
         --noconfirm \
         main.py 2>/dev/null || {
         echo -e "${YELLOW}상세 로그로 재시도...${NC}"
-        python3 -m PyInstaller --windowed --name CC2Translate --osx-bundle-identifier com.cc2translate.app main.py
+        python3 -m PyInstaller --windowed --name CC2Translate --osx-bundle-identifier com.cc2translate.app --add-data "version.txt:." main.py
     }
 else
     # Linux
@@ -81,11 +85,12 @@ else
         --onefile \
         --windowed \
         --name cc2translate \
+        --add-data "version.txt:." \
         --clean \
         --noconfirm \
         main.py 2>/dev/null || {
         echo -e "${YELLOW}상세 로그로 재시도...${NC}"
-        python3 -m PyInstaller --onefile --windowed --name cc2translate main.py
+        python3 -m PyInstaller --onefile --windowed --name cc2translate --add-data "version.txt:." main.py
     }
 fi
 echo -e "      ${GREEN}바이너리 빌드 완료${NC}"
@@ -133,8 +138,28 @@ EOF
     echo -e "      ${GREEN}앱 메뉴 등록 완료${NC}"
 fi
 
+# 소스 repo 경로를 config.json에 저장
+CONFIG_FILE="$INSTALL_DIR/config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    # 기존 config가 있으면 repo_path만 업데이트
+    python3 -c "
+import json
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    config = {}
+config['repo_path'] = '$SCRIPT_DIR'
+with open('$CONFIG_FILE', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+else
+    mkdir -p "$INSTALL_DIR"
+    echo "{\"repo_path\": \"$SCRIPT_DIR\"}" > "$CONFIG_FILE"
+fi
+
 # 빌드 파일 정리
-rm -rf "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR"/*.spec 2>/dev/null
+rm -rf "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR"/*.spec "$SCRIPT_DIR/version.txt" 2>/dev/null
 
 # PATH 확인
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
