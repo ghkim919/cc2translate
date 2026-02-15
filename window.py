@@ -380,6 +380,10 @@ class TranslatorWindow(QMainWindow):
             return
         if not self.translate_btn.isEnabled():
             return
+        text = self.src_text.toPlainText().strip()
+        if not text:
+            return
+        self._detect_language(text)
         self.do_translate()
 
     # ── 번역 ───────────────────────────────────────────────
