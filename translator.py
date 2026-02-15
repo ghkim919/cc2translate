@@ -71,13 +71,14 @@ def _translate_gemini_api(text, src_lang, tgt_lang, model):
         raise TranslationError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
 
     prompt = build_prompt(text, src_lang, tgt_lang)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    headers = {"x-goog-api-key": api_key}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
     }
 
     try:
-        resp = requests.post(url, json=payload, timeout=30)
+        resp = requests.post(url, json=payload, headers=headers, timeout=30)
     except requests.Timeout:
         raise TranslationError("Gemini API 시간 초과 (30초)")
     except requests.ConnectionError:
