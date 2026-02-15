@@ -70,10 +70,12 @@ class TranslatorWindow(QMainWindow):
 
         self.shortcut_text = "Cmd+C" if IS_MACOS else "Ctrl+C"
         self._updating = False
+        self._suppress_auto_translate = False
 
         self._init_ui()
         self._setup_hotkey()
         self._setup_tray()
+        self._setup_auto_translate()
         self._check_for_update()
 
     # ── UI 초기화 ──────────────────────────────────────────
@@ -213,7 +215,7 @@ class TranslatorWindow(QMainWindow):
         splitter = QSplitter(Qt.Horizontal)
 
         self.src_text = QTextEdit()
-        self.src_text.setPlaceholderText(f"원본 텍스트 ({self.shortcut_text} 두 번으로 클립보드에서 가져오기)")
+        self.src_text.setPlaceholderText(f"원본 텍스트 입력 (1초 후 자동 번역 / {self.shortcut_text} 두 번으로 클립보드에서 가져오기)")
         self.src_text.setFont(QFont("Sans", 11))
         self.src_text.setStyleSheet("""
             QTextEdit {
@@ -359,13 +361,36 @@ class TranslatorWindow(QMainWindow):
     def _trigger_show(self):
         self.signal_emitter.show_window.emit()
 
+    # ── 자동 번역 (debounce) ──────────────────────────────
+
+    def _setup_auto_translate(self):
+        self._debounce_timer = QTimer()
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(1000)
+        self._debounce_timer.timeout.connect(self._on_auto_translate)
+        self.src_text.textChanged.connect(self._on_src_text_changed)
+
+    def _on_src_text_changed(self):
+        if self._suppress_auto_translate:
+            return
+        self._debounce_timer.start()
+
+    def _on_auto_translate(self):
+        if self._suppress_auto_translate:
+            return
+        if not self.translate_btn.isEnabled():
+            return
+        self.do_translate()
+
     # ── 번역 ───────────────────────────────────────────────
 
     def show_and_activate(self):
         clipboard = QApplication.clipboard()
         text = clipboard.text()
         if text:
+            self._suppress_auto_translate = True
             self.src_text.setText(text)
+            self._suppress_auto_translate = False
             self._detect_language(text)
 
         self.show()
@@ -424,7 +449,9 @@ class TranslatorWindow(QMainWindow):
             self.signal_emitter.translation_error.emit(str(e))
 
     def _on_translation_done(self, translation):
+        self._suppress_auto_translate = True
         self.tgt_text.setText(translation)
+        self._suppress_auto_translate = False
         self.translate_btn.setEnabled(True)
         self.statusBar().showMessage("번역 완료")
 
@@ -502,7 +529,9 @@ class TranslatorWindow(QMainWindow):
 
     def _on_history_item_clicked(self, item):
         entry = item.data(Qt.UserRole)
+        self._suppress_auto_translate = True
         self.src_text.setText(entry["src_text"])
+        self._suppress_auto_translate = False
         self.tgt_text.setText(entry["tgt_text"])
         # 모델/언어 복원
         idx = self.model_combo.findText(entry["model"])
