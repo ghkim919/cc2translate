@@ -3,9 +3,10 @@
 import os
 import sqlite3
 
-DB_DIR = os.path.expanduser("~/.local/share/cc2translate")
-DB_PATH = os.path.join(DB_DIR, "history.db")
-MAX_ENTRIES = 500
+from constants import APP_DATA_DIR, HISTORY_DB_NAME, MAX_HISTORY_ENTRIES
+
+DB_DIR = APP_DATA_DIR
+DB_PATH = os.path.join(DB_DIR, HISTORY_DB_NAME)
 
 
 def _connect():
@@ -39,7 +40,7 @@ def add_entry(src_text, tgt_text, src_lang, tgt_lang, model):
         conn.execute(
             "DELETE FROM history WHERE id NOT IN "
             "(SELECT id FROM history ORDER BY id DESC LIMIT ?)",
-            (MAX_ENTRIES,),
+            (MAX_HISTORY_ENTRIES,),
         )
         conn.commit()
     finally:

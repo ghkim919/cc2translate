@@ -12,7 +12,15 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer
 from PyQt5.QtGui import QFont
 
-from constants import LANGUAGES, ALL_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS, IS_MACOS
+from constants import (
+    LANGUAGES, ALL_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS, IS_MACOS,
+    WINDOW_SIZE, WINDOW_MIN_SIZE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE,
+    FONT_SIZE_RANGE, FONT_SLIDER_MAX_WIDTH, SPLITTER_DEFAULT,
+    SPLITTER_HISTORY_OPEN, SPLITTER_HISTORY_CLOSED,
+    AUTO_TRANSLATE_DEBOUNCE_MS, HISTORY_SEARCH_DEBOUNCE_MS,
+    HOTKEY_TRIGGER_DELAY, HISTORY_PREVIEW_LENGTH,
+)
+import styles
 from translator import translate, TranslationError
 from hotkey import HotkeyListener
 import history
@@ -82,8 +90,8 @@ class TranslatorWindow(QMainWindow):
 
     def _init_ui(self):
         self.setWindowTitle("CC2Translate - Claude 번역기")
-        self.setGeometry(100, 100, 900, 600)
-        self.setMinimumSize(600, 400)
+        self.setGeometry(100, 100, *WINDOW_SIZE)
+        self.setMinimumSize(*WINDOW_MIN_SIZE)
 
         self._init_toolbar()
         self._init_text_area()
@@ -93,14 +101,7 @@ class TranslatorWindow(QMainWindow):
     def _init_toolbar(self):
         toolbar = self.addToolBar("설정")
         toolbar.setMovable(False)
-        toolbar.setStyleSheet("""
-            QToolBar {
-                background: #f5f5f5;
-                border-bottom: 1px solid #ddd;
-                padding: 5px;
-                spacing: 10px;
-            }
-        """)
+        toolbar.setStyleSheet(styles.TOOLBAR)
 
         # 모델 선택
         toolbar.addWidget(QLabel(" 모델:"))
@@ -122,7 +123,7 @@ class TranslatorWindow(QMainWindow):
 
         # 화살표
         arrow_label = QLabel(" → ")
-        arrow_label.setFont(QFont("Sans", 12, QFont.Bold))
+        arrow_label.setFont(QFont(DEFAULT_FONT_FAMILY, 12, QFont.Bold))
         toolbar.addWidget(arrow_label)
 
         # 타겟 언어
@@ -144,58 +145,27 @@ class TranslatorWindow(QMainWindow):
         # 버튼들
         self.clear_btn = QPushButton("지우기")
         self.clear_btn.clicked.connect(self._clear_texts)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e0e0e0; color: #333;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #d0d0d0; }
-        """)
+        self.clear_btn.setStyleSheet(styles.BUTTON_DEFAULT)
         toolbar.addWidget(self.clear_btn)
 
         self.copy_btn = QPushButton("복사")
         self.copy_btn.clicked.connect(self._copy_result)
-        self.copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #5cb85c; color: white;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #4cae4c; }
-        """)
+        self.copy_btn.setStyleSheet(styles.BUTTON_SUCCESS)
         toolbar.addWidget(self.copy_btn)
 
         self.translate_btn = QPushButton("번역")
         self.translate_btn.clicked.connect(self.do_translate)
-        self.translate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4a90d9; color: white;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #357abd; }
-            QPushButton:disabled { background-color: #cccccc; }
-        """)
+        self.translate_btn.setStyleSheet(styles.BUTTON_PRIMARY)
         toolbar.addWidget(self.translate_btn)
 
         self.history_btn = QPushButton("기록")
         self.history_btn.clicked.connect(self._toggle_history)
-        self.history_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e0e0e0; color: #333;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #d0d0d0; }
-        """)
+        self.history_btn.setStyleSheet(styles.BUTTON_DEFAULT)
         toolbar.addWidget(self.history_btn)
 
         self.settings_btn = QPushButton("설정")
         self.settings_btn.clicked.connect(self._show_settings)
-        self.settings_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e0e0e0; color: #333;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #d0d0d0; }
-        """)
+        self.settings_btn.setStyleSheet(styles.BUTTON_DEFAULT)
         toolbar.addWidget(self.settings_btn)
 
     def _init_text_area(self):
@@ -216,31 +186,22 @@ class TranslatorWindow(QMainWindow):
 
         self.src_text = QTextEdit()
         self.src_text.setPlaceholderText(f"원본 텍스트 입력 (1초 후 자동 번역 / {self.shortcut_text} 두 번으로 클립보드에서 가져오기)")
-        self.src_text.setFont(QFont("Sans", 11))
-        self.src_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #ccc; border-radius: 5px; padding: 10px;
-            }
-        """)
+        self.src_text.setFont(QFont(DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE))
+        self.src_text.setStyleSheet(styles.TEXT_INPUT)
 
         self.tgt_text = QTextEdit()
         self.tgt_text.setPlaceholderText("번역 결과")
         self.tgt_text.setReadOnly(True)
-        self.tgt_text.setFont(QFont("Sans", 11))
-        self.tgt_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #ccc; border-radius: 5px; padding: 10px;
-                background-color: #fafafa;
-            }
-        """)
+        self.tgt_text.setFont(QFont(DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE))
+        self.tgt_text.setStyleSheet(styles.TEXT_OUTPUT)
 
         splitter.addWidget(self.src_text)
         splitter.addWidget(self.tgt_text)
-        splitter.setSizes([450, 450])
+        splitter.setSizes(SPLITTER_DEFAULT)
 
         self.outer_splitter.addWidget(splitter)
         self.history_panel.hide()
-        self.outer_splitter.setSizes([0, 900])
+        self.outer_splitter.setSizes(SPLITTER_HISTORY_CLOSED)
         main_layout.addWidget(self.outer_splitter, 1)
 
         # 글자 크기 슬라이더 (하단 컴팩트)
@@ -249,24 +210,24 @@ class TranslatorWindow(QMainWindow):
         slider_layout.setSpacing(4)
 
         small_label = QLabel("A")
-        small_label.setFont(QFont("Sans", 7))
+        small_label.setFont(QFont(DEFAULT_FONT_FAMILY, 7))
         small_label.setStyleSheet("color: #888;")
         slider_layout.addWidget(small_label)
 
         self.font_slider = QSlider(Qt.Horizontal)
-        self.font_slider.setRange(8, 24)
-        self.font_slider.setValue(11)
-        self.font_slider.setMaximumWidth(120)
+        self.font_slider.setRange(*FONT_SIZE_RANGE)
+        self.font_slider.setValue(DEFAULT_FONT_SIZE)
+        self.font_slider.setMaximumWidth(FONT_SLIDER_MAX_WIDTH)
         self.font_slider.setFixedHeight(16)
         self.font_slider.valueChanged.connect(self._on_font_size_changed)
         slider_layout.addWidget(self.font_slider)
 
         big_label = QLabel("A")
-        big_label.setFont(QFont("Sans", 11))
+        big_label.setFont(QFont(DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE))
         big_label.setStyleSheet("color: #888;")
         slider_layout.addWidget(big_label)
 
-        self.font_size_label = QLabel("11pt")
+        self.font_size_label = QLabel(f"{DEFAULT_FONT_SIZE}pt")
         self.font_size_label.setStyleSheet("color: #888; font-size: 10px;")
         slider_layout.addWidget(self.font_size_label)
 
@@ -280,49 +241,29 @@ class TranslatorWindow(QMainWindow):
         layout.setSpacing(5)
 
         header = QLabel("번역 기록")
-        header.setFont(QFont("Sans", 12, QFont.Bold))
+        header.setFont(QFont(DEFAULT_FONT_FAMILY, 12, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
 
         self.history_search = QLineEdit()
         self.history_search.setPlaceholderText("검색...")
-        self.history_search.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc; border-radius: 3px; padding: 5px;
-            }
-        """)
+        self.history_search.setStyleSheet(styles.LINE_EDIT)
         self._search_timer = QTimer()
         self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(300)
+        self._search_timer.setInterval(HISTORY_SEARCH_DEBOUNCE_MS)
         self._search_timer.timeout.connect(self._on_history_search)
         self.history_search.textChanged.connect(lambda: self._search_timer.start())
         layout.addWidget(self.history_search)
 
         self.history_list = QListWidget()
-        self.history_list.setStyleSheet("""
-            QListWidget {
-                border: 1px solid #ccc; border-radius: 3px;
-            }
-            QListWidget::item {
-                padding: 6px; border-bottom: 1px solid #eee;
-            }
-            QListWidget::item:selected {
-                background-color: #d0e4f7;
-            }
-        """)
+        self.history_list.setStyleSheet(styles.HISTORY_LIST)
         self.history_list.itemClicked.connect(self._on_history_item_clicked)
         self.history_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.history_list.customContextMenuRequested.connect(self._on_history_context_menu)
         layout.addWidget(self.history_list)
 
         clear_all_btn = QPushButton("전체 삭제")
-        clear_all_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #d9534f; color: white;
-                border: none; border-radius: 3px; padding: 5px 15px;
-            }
-            QPushButton:hover { background-color: #c9302c; }
-        """)
+        clear_all_btn.setStyleSheet(styles.BUTTON_DANGER)
         clear_all_btn.clicked.connect(self._delete_all_history)
         layout.addWidget(clear_all_btn)
 
@@ -354,7 +295,7 @@ class TranslatorWindow(QMainWindow):
 
     def _setup_hotkey(self):
         self.hotkey_listener = HotkeyListener(
-            on_double_copy=lambda: threading.Timer(0.1, self._trigger_show).start()
+            on_double_copy=lambda: threading.Timer(HOTKEY_TRIGGER_DELAY, self._trigger_show).start()
         )
         self.hotkey_listener.start()
 
@@ -366,7 +307,7 @@ class TranslatorWindow(QMainWindow):
     def _setup_auto_translate(self):
         self._debounce_timer = QTimer()
         self._debounce_timer.setSingleShot(True)
-        self._debounce_timer.setInterval(1000)
+        self._debounce_timer.setInterval(AUTO_TRANSLATE_DEBOUNCE_MS)
         self._debounce_timer.timeout.connect(self._on_auto_translate)
         self.src_text.textChanged.connect(self._on_src_text_changed)
 
@@ -511,19 +452,19 @@ class TranslatorWindow(QMainWindow):
     def _toggle_history(self):
         if self.history_panel.isVisible():
             self.history_panel.hide()
-            self.outer_splitter.setSizes([0, 900])
+            self.outer_splitter.setSizes(SPLITTER_HISTORY_CLOSED)
         else:
             self._load_history()
             self.history_panel.show()
-            self.outer_splitter.setSizes([250, 650])
+            self.outer_splitter.setSizes(SPLITTER_HISTORY_OPEN)
 
     def _load_history(self):
         search = self.history_search.text().strip()
         entries = history.get_entries(search)
         self.history_list.clear()
         for entry in entries:
-            preview = entry["src_text"][:60].replace("\n", " ")
-            if len(entry["src_text"]) > 60:
+            preview = entry["src_text"][:HISTORY_PREVIEW_LENGTH].replace("\n", " ")
+            if len(entry["src_text"]) > HISTORY_PREVIEW_LENGTH:
                 preview += "…"
             time_str = self._format_time(entry["created_at"])
             label = f"{preview}\n{entry['model']} | {entry['tgt_lang']} | {time_str}"
@@ -645,7 +586,7 @@ class TranslatorWindow(QMainWindow):
     # ── 글자 크기 ──────────────────────────────────────────
 
     def _on_font_size_changed(self, value):
-        font = QFont("Sans", value)
+        font = QFont(DEFAULT_FONT_FAMILY, value)
         self.src_text.setFont(font)
         self.tgt_text.setFont(font)
         self.font_size_label.setText(f"{value}pt")

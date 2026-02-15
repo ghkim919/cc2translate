@@ -8,8 +8,9 @@ import threading
 import urllib.request
 import urllib.error
 
-GITHUB_REPO = "ghkim919/cc2translate"
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".local", "share", "cc2translate")
+from constants import GITHUB_REPO, APP_DATA_DIR, GITHUB_API_TIMEOUT
+
+CONFIG_DIR = APP_DATA_DIR
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 
@@ -48,7 +49,7 @@ def get_remote_version():
     url = f"https://api.github.com/repos/{GITHUB_REPO}/commits/master"
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=GITHUB_API_TIMEOUT) as resp:
             data = json.loads(resp.read().decode())
             return data["sha"]
     except (urllib.error.URLError, KeyError, json.JSONDecodeError, OSError):

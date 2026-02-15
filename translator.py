@@ -7,7 +7,7 @@ import subprocess
 
 import requests
 
-from constants import GEMINI_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS
+from constants import GEMINI_MODELS, GEMINI_API_MODELS, DEEPL_API_MODELS, API_TIMEOUT, CLI_TIMEOUT
 
 # DeepL 언어 코드 매핑
 DEEPL_LANG_MAP = {
@@ -78,9 +78,9 @@ def _translate_gemini_api(text, src_lang, tgt_lang, model):
     }
 
     try:
-        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+        resp = requests.post(url, json=payload, headers=headers, timeout=API_TIMEOUT)
     except requests.Timeout:
-        raise TranslationError("Gemini API 시간 초과 (30초)")
+        raise TranslationError(f"Gemini API 시간 초과 ({API_TIMEOUT}초)")
     except requests.ConnectionError:
         raise TranslationError("Gemini API 연결 실패. 네트워크를 확인하세요.")
 
@@ -120,9 +120,9 @@ def _translate_deepl_api(text, src_lang, tgt_lang):
     headers = {"Authorization": f"DeepL-Auth-Key {api_key}"}
 
     try:
-        resp = requests.post(url, data=params, headers=headers, timeout=30)
+        resp = requests.post(url, data=params, headers=headers, timeout=API_TIMEOUT)
     except requests.Timeout:
-        raise TranslationError("DeepL API 시간 초과 (30초)")
+        raise TranslationError(f"DeepL API 시간 초과 ({API_TIMEOUT}초)")
     except requests.ConnectionError:
         raise TranslationError("DeepL API 연결 실패. 네트워크를 확인하세요.")
 
@@ -151,9 +151,9 @@ def _translate_cli(text, src_lang, tgt_lang, model):
         cmd = ['claude', '-p', prompt, '--model', model]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=_get_env())
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=CLI_TIMEOUT, env=_get_env())
     except subprocess.TimeoutExpired:
-        raise TranslationError("번역 시간 초과 (60초)")
+        raise TranslationError(f"번역 시간 초과 ({CLI_TIMEOUT}초)")
     except FileNotFoundError:
         cli_name = "Gemini" if is_gemini else "Claude"
         raise TranslationError(f"{cli_name} CLI가 설치되어 있지 않습니다")

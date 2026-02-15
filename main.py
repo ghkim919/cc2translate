@@ -6,17 +6,15 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 
-from constants import IS_MACOS
+from constants import IS_MACOS, APP_ID, SOCKET_CONNECT_TIMEOUT_MS
 from window import TranslatorWindow
-
-APP_ID = "cc2translate-single-instance"
 
 
 def is_already_running():
     """이미 실행 중인 인스턴스가 있는지 확인하고, 있으면 활성화 신호를 보냄"""
     socket = QLocalSocket()
     socket.connectToServer(APP_ID)
-    if socket.waitForConnected(500):
+    if socket.waitForConnected(SOCKET_CONNECT_TIMEOUT_MS):
         socket.close()
         return True
     return False

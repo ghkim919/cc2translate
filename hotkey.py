@@ -2,7 +2,7 @@
 
 import time
 
-from constants import IS_MACOS
+from constants import IS_MACOS, MACOS_KEY_C, DOUBLE_PRESS_INTERVAL
 
 if IS_MACOS:
     import Quartz
@@ -63,9 +63,9 @@ class HotkeyListener:
                 keycode = Quartz.CGEventGetIntegerValueField(
                     event, Quartz.kCGKeyboardEventKeycode
                 )
-                if keycode == 8:  # 'c' key
+                if keycode == MACOS_KEY_C:
                     now = time.time()
-                    if now - self.last_copy_time < 0.5:
+                    if now - self.last_copy_time < DOUBLE_PRESS_INTERVAL:
                         self.last_copy_time = 0
                         self.on_double_copy()
                     else:
@@ -98,7 +98,7 @@ class HotkeyListener:
                 return
             if hasattr(key, 'char') and key.char == 'c' and self._ctrl_pressed:
                 now = time.time()
-                if now - self.last_copy_time < 0.5:
+                if now - self.last_copy_time < DOUBLE_PRESS_INTERVAL:
                     self.last_copy_time = 0
                     self.on_double_copy()
                 else:
